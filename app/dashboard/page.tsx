@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsersPage from "../components/UsersPage";
+import MonitoringPage from "../components/MonitoringPage";
 import SettingsPage, { Avatar, useSavedUser } from "../components/SettingsPage";
 import { api, type Alert as ApiAlert, type Sala, type Sensor, type User } from "../../lib/api";
 import {
@@ -140,24 +141,6 @@ function DashboardHome({devices}:{devices:Device[]}) {
   </div>
 }
 
-function Monitoring({devices,setDevices}:{devices:Device[],setDevices:React.Dispatch<React.SetStateAction<Device[]>>}) {
-  const router = useRouter();
-  return <div className="page-content">
-    <div className="page-heading"><div><span className="eyebrow dark">IOT</span><h1>Monitoramento em tempo real</h1><p>Dados recebidos dos dispositivos conectados.</p></div><div className="heading-actions"><button className="ghost-btn"><SlidersHorizontal size={16}/> Filtrar</button><button className="primary-btn"><Plus size={17}/> Adicionar dispositivo</button></div></div>
-    <div className="monitor-grid">{devices.map(d=><div className="device-card" key={d.id}>
-      <div className="device-card-head"><div><span className={"device-dot "+d.status}/><b>{d.name}</b><small>{d.id}</small></div><StatusBadge status={d.status==="online"?"Online":"Offline"}/></div>
-      <p className="location">{d.location}</p>
-      <div className="sensor-values">
-        <div><Thermometer/><span>Temperatura</span><b>{d.temp}°C</b></div>
-        <div><Waves/><span>Umidade</span><b>{d.hum}%</b></div>
-        <div><AirVent/><span>Qualidade</span><b>{d.air} AQI</b></div>
-        <div><ShieldAlert/><span>Gases</span><b>{d.gas} ppm</b></div>
-      </div>
-      <div className="device-card-foot"><small>Última comunicação: {d.last}</small><button className="text-button" onClick={()=>router.push(`/dashboard/monitoramento/${d.id}`)}>Ver detalhes</button></div>
-    </div>)}</div>
-  </div>
-}
-
 function Devices({devices,setDevices}:{devices:Device[],setDevices:React.Dispatch<React.SetStateAction<Device[]>>}) {
   const [open,setOpen]=useState(false);
   const [form,setForm]=useState({name:"",location:""});
@@ -247,7 +230,7 @@ export default function DashboardPage() {
 
   const content = useMemo(()=>{
     if(page==="Dashboard") return <DashboardHome devices={devices}/>;
-    if(page==="Monitoramento") return <Monitoring devices={devices} setDevices={setDevices}/>;
+    if(page==="Monitoramento") return <MonitoringPage/>;
     if(page==="Dispositivos IoT") return <Devices devices={devices} setDevices={setDevices}/>;
     if(page==="Sensores") return <Sensors/>;
     if(page==="Alertas") return <Alerts/>;
