@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsersPage from "../components/UsersPage";
 import MonitoringPage from "../components/MonitoringPage";
+import AlertsPage from "../components/AlertsPage";
 import SettingsPage, { Avatar, useSavedUser } from "../components/SettingsPage";
 import { api, type Alert as ApiAlert, type Sala, type Sensor, type User } from "../../lib/api";
 import {
@@ -57,6 +58,18 @@ function deviceFromSala(sala: Sala, sensors: Sensor[]): Device {
   };
 }
 
+/** Número de alertas ativos, avisado pelo AlertWatcher/AlertsPage. */
+function useAlertCount() {
+  const [n,setN]=useState(0);
+  useEffect(()=>{
+    try { setN(Number(localStorage.getItem("indusense_alertas_ativos")||0)); } catch {}
+    const on=(e:Event)=>setN(Number((e as CustomEvent).detail)||0);
+    window.addEventListener("indusense:alerts",on);
+    return ()=>window.removeEventListener("indusense:alerts",on);
+  },[]);
+  return n;
+}
+
 function StatusBadge({status}:{status:string}) {
   const cls = status.toLowerCase().includes("crít") ? "critical" : status.toLowerCase().includes("aten") ? "warning" : status.toLowerCase().includes("off") ? "offline" : "success";
   return <span className={"status-badge "+cls}><i/> {status}</span>;
@@ -64,6 +77,7 @@ function StatusBadge({status}:{status:string}) {
 
 function Sidebar({page,setPage,collapsed,setCollapsed,onLogout}:{page:string,setPage:(p:string)=>void,collapsed:boolean,setCollapsed:(v:boolean)=>void,onLogout:()=>void}) {
   const me = useSavedUser();
+  const alertas = useAlertCount();
   const items = [
     ["Dashboard",LayoutDashboard],["Monitoramento",Monitor],["Dispositivos IoT",Wifi],["Sensores",Gauge],
     ["Alertas",Bell],["Histórico",Database],["Relatórios",CloudDownload],["Usuários",Users],["Configurações",Settings]
@@ -74,7 +88,7 @@ function Sidebar({page,setPage,collapsed,setCollapsed,onLogout}:{page:string,set
       <button className="collapse-btn" onClick={()=>setCollapsed(!collapsed)}><Menu size={20}/></button>
     </div>
     <div className="side-label">MENU PRINCIPAL</div>
-    <nav>{items.map(([label,Icon])=><button key={label} className={page===label?"active":""} onClick={()=>setPage(label)} title={label}><Icon size={19}/><span>{label}</span>{label==="Alertas"&&<em>3</em>}</button>)}</nav>
+    <nav>{items.map(([label,Icon])=><button key={label} className={page===label?"active":""} onClick={()=>setPage(label)} title={label}><Icon size={19}/><span>{label}</span>{label==="Alertas"&&alertas>0&&<em>{alertas>99?"99+":alertas}</em>}</button>)}</nav>
     <div className="side-bottom">
       <button className="user-mini" onClick={()=>setPage("Configurações")} title="Meu perfil"><Avatar user={me} size={36} className="avatar"/><div className="user-mini-text"><b>{me?.nome || "Usuário"}</b><small>{me?.email || ""}</small></div></button>
       <button className="logout-btn" onClick={onLogout}><LogOut size={18}/><span>Sair</span></button>
@@ -84,13 +98,14 @@ function Sidebar({page,setPage,collapsed,setCollapsed,onLogout}:{page:string,set
 
 function Topbar({page,setPage}:{page:string,setPage:(p:string)=>void}) {
   const me = useSavedUser();
+  const alertas = useAlertCount();
   return <header className="topbar">
     <button className="mobile-menu" onClick={()=>setPage(page)}><Menu size={21}/></button>
     <div className="crumb"><span>InduSense</span><b>/</b><strong>{page}</strong></div>
     <div className="top-actions">
       <div className="live"><span/> Sistema operacional</div>
       <button className="round-btn" title="Ajuda"><CircleHelp size={19}/></button>
-      <button className="round-btn" title="Notificações" onClick={()=>setPage("Alertas")}><Bell size={19}/><i>3</i></button>
+      <button className="round-btn" title="Notificações" onClick={()=>setPage("Alertas")}><Bell size={19}/>{alertas>0&&<i>{alertas>99?"99+":alertas}</i>}</button>
       <button className="top-avatar-btn" onClick={()=>setPage("Configurações")} title="Meu perfil"><Avatar user={me} size={36}/></button>
     </div>
   </header>
@@ -106,6 +121,7 @@ function MetricCard({title,value,unit,delta,kind,icon:Icon}:{title:string,value:
 }
 
 function DashboardHome({devices}:{devices:Device[]}) {
+  const alertas = useAlertCount();
   const online = devices.filter(d=>d.status==="online").length;
   return <div className="page-content">
     <div className="page-heading">
@@ -118,7 +134,7 @@ function DashboardHome({devices}:{devices:Device[]}) {
       <MetricCard title="Qualidade do ar" value={devices.length ? String(Math.round(devices[0].air)) : "—"} unit=" AQI" delta="API" kind="good" icon={AirVent}/>
       <MetricCard title="Gases" value={devices.length ? String(Math.round(devices[0].gas)) : "—"} unit=" ppm" delta="API" kind="warning" icon={ShieldAlert}/>
       <MetricCard title="Dispositivos online" value={String(online)} unit={"/ "+devices.length} delta="+1" kind="good" icon={Wifi}/>
-      <MetricCard title="Alertas ativos" value="3" unit="" delta="+1 hoje" kind="critical" icon={Bell}/>
+      <MetricCard title="Alertas ativos" value={String(alertas)} unit="" delta={alertas?"agora":"ok"} kind={alertas?"critical":"good"} icon={Bell}/>
     </div>
     <div className="dashboard-grid">
       <section className="panel chart-panel large">
@@ -174,20 +190,6 @@ function Sensors() {
   </div>
 }
 
-function Alerts() {
-  const [list,setList]=useState<ApiAlert[]>([]);
-  const [loading,setLoading]=useState(true);
-  useEffect(()=>{ api.alerts().then(setList).catch(()=>setList([])).finally(()=>setLoading(false)); },[]);
-  async function resolve(id:string) {
-    try { await api.readAlert(id); setList(l=>l.map(x=>x.id===id?{...x,resolvido:true}:x)); }
-    catch {}
-  }
-  return <div className="page-content"><div className="page-heading"><div><span className="eyebrow dark">SEGURANÇA</span><h1>Central de alertas</h1><p>Alertas carregados diretamente da API.</p></div></div>
-    <section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>Tipo</th><th>Sensor</th><th>Horário</th><th>Valor</th><th>Limite</th><th>Criticidade</th><th>Status</th><th>Ação</th></tr></thead>
-    <tbody>{loading?<tr><td colSpan={8}>Carregando alertas...</td></tr>:list.length===0?<tr><td colSpan={8}>Nenhum alerta encontrado.</td></tr>:list.map(a=><tr key={a.id}><td><b>{a.tipo}</b></td><td>{a.sensor?.nome || a.sensorId}</td><td>{new Date(a.dataHora).toLocaleString("pt-BR")}</td><td><b>{a.valorMedido}</b></td><td>{a.limite}</td><td><StatusBadge status={a.severidade}/></td><td>{a.resolvido?"Resolvido":"Não resolvido"}</td><td>{!a.resolvido&&<button className="resolve-btn" onClick={()=>resolve(a.id)}><CheckCircle2 size={15}/> Resolver</button>}</td></tr>)}</tbody></table></div></section>
-  </div>
-}
-
 function History() {
   return <div className="page-content"><div className="page-heading"><div><span className="eyebrow dark">DADOS</span><h1>Histórico</h1><p>Consulte medições armazenadas e acompanhe tendências.</p></div><button className="ghost-btn"><CloudDownload size={16}/> Exportar CSV</button></div><section className="panel table-panel"><div className="table-toolbar"><div className="search-box"><Search size={17}/><input placeholder="Buscar por dispositivo ou sensor..."/></div><select className="small-select"><option>Todos os períodos</option><option>Hoje</option><option>7 dias</option><option>30 dias</option></select></div><div className="table-scroll"><table><thead><tr><th>Data</th><th>Dispositivo</th><th>Sensor</th><th>Valor</th><th>Unidade</th><th>Status</th></tr></thead><tbody>{["25/08/2026 10:42","25/08/2026 10:41","25/08/2026 10:40","25/08/2026 10:39","25/08/2026 10:38"].map((d,i)=><tr key={d}><td>{d}</td><td>IND-00{i%3+1}</td><td>{["DHT-01","AQ-02","MQ-02"][i%3]}</td><td><b>{[26.4,43,21,67,57][i]}</b></td><td>{["°C","AQI","ppm","AQI","%"][i]}</td><td><StatusBadge status={i===3?"Atenção":"Normal"}/></td></tr>)}</tbody></table></div></section></div>
 }
@@ -197,6 +199,7 @@ function Reports() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [page,setPage]=useState("Dashboard");
   const [collapsed,setCollapsed]=useState(false);
   const [devices,setDevices]=useState<Device[]>(initialDevices);
@@ -233,12 +236,12 @@ export default function DashboardPage() {
     if(page==="Monitoramento") return <MonitoringPage/>;
     if(page==="Dispositivos IoT") return <Devices devices={devices} setDevices={setDevices}/>;
     if(page==="Sensores") return <Sensors/>;
-    if(page==="Alertas") return <Alerts/>;
+    if(page==="Alertas") return <AlertsPage onVerSala={(c)=>router.push(`/dashboard/monitoramento/${encodeURIComponent(c)}`)}/>;
     if(page==="Histórico") return <History/>;
     if(page==="Relatórios") return <Reports/>;
     if(page==="Usuários") return <UsersPage/>;
     return <SettingsPage onGoUsers={()=>setPage("Usuários")}/>;
-  },[page,devices]);
+  },[page,devices,router]);
 
   return <div className="app-shell"><Sidebar page={page} setPage={setPage} collapsed={collapsed} setCollapsed={setCollapsed} onLogout={logout}/><main className={"main "+(collapsed?"expanded":"")}><Topbar page={page} setPage={setPage}/>{apiLoading && <div className="page-content"><div className="panel" style={{padding:20}}>Carregando dados da API...</div></div>}{apiError && <div className="page-content"><div className="error-box">{apiError}</div></div>}{!apiLoading && content}</main></div>
 }
