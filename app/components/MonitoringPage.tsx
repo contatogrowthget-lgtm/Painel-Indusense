@@ -488,6 +488,14 @@ function SalaModal({
 
 function ConexaoModal({ sala, sensores, onClose }: { sala: Sala; sensores: Sensor[]; onClose: () => void }) {
   const [copiado, setCopiado] = useState("");
+  const [chave, setChave] = useState<string | null>(null);
+  const [verChave, setVerChave] = useState(false);
+
+  // a chave vem da API (só para administradores) e não fica gravada no código do site
+  useEffect(() => {
+    call<{ apiKey: string | null }>("/dispositivos/config").then((r) => setChave(r.apiKey)).catch(() => setChave(null));
+  }, []);
+  const KEY = chave || "SUA_DEVICE_API_KEY";
   const url = `${BASE}/readings`;
   const exemplo = sensores[0]?.codigo || `TEMP-${sala.codigo}`;
 
@@ -498,7 +506,7 @@ function ConexaoModal({ sala, sensores, onClose }: { sala: Sala; sensores: Senso
     .map((s) => `  enviar("${s.codigo}", lerSensor_${s.tipo}());   // troque pela leitura real`)
     .join("\n");
 
-  const curl = `curl -X POST "${url}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: SUA_DEVICE_API_KEY" \\\n  -d '{"sensorId":"${exemplo}","valor":24.5}'`;
+  const curl = `curl -X POST "${url}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: ${KEY}" \\\n  -d '{"sensorId":"${exemplo}","valor":24.5}'`;
 
   const arduino = `#include <WiFi.h>
 #include <HTTPClient.h>
@@ -506,7 +514,7 @@ function ConexaoModal({ sala, sensores, onClose }: { sala: Sala; sensores: Senso
 const char* WIFI_SSID = "SUA_REDE";
 const char* WIFI_SENHA = "SENHA_DA_REDE";
 const char* API = "${url}";
-const char* API_KEY = "SUA_DEVICE_API_KEY";   // DEVICE_API_KEY do Render
+const char* API_KEY = "${KEY}";
 
 void enviar(const char* sensor, float valor) {
   HTTPClient http;
@@ -551,6 +559,14 @@ ${linhasLoop}
           <div><small>Código da sala</small><b>{sala.codigo}</b></div>
           <div><small><Tag size={11} /> Tag NFC</small><b>{sala.nfcTagId || `NFC-${sala.codigo}`}</b></div>
           <div className="full"><small>Endereço para enviar as leituras (POST)</small><b className="mono">{url}</b></div>
+          <div className="full">
+            <small>Chave do dispositivo (cabeçalho <code>x-api-key</code>)</small>
+            <div className="key-row">
+              <b className="mono">{chave ? (verChave ? chave : "•".repeat(Math.min(chave.length, 32))) : "não disponível"}</b>
+              {chave && <button type="button" className="ghost-btn" onClick={() => setVerChave(!verChave)}>{verChave ? "Ocultar" : "Mostrar"}</button>}
+              {chave && <button type="button" className="ghost-btn" onClick={() => copiar(chave, "key")}>{copiado === "key" ? <><Check size={13} /> Copiada</> : <><Copy size={13} /> Copiar</>}</button>}
+            </div>
+          </div>
         </div>
 
         <div className="conn-sensors">
@@ -575,7 +591,9 @@ ${linhasLoop}
           <div className="code-head"><span>Código para o ESP32 (Arduino)</span><button type="button" onClick={() => copiar(arduino, "ino")}>{copiado === "ino" ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}</button></div>
           <pre>{arduino}</pre>
         </div>
-        <p className="muted-line">Troque <b>SUA_DEVICE_API_KEY</b> pela variável <b>DEVICE_API_KEY</b> do Render. Ela é a mesma usada pela câmera.</p>
+        <p className="muted-line">{chave
+          ? "A chave já está preenchida nos códigos acima. Não compartilhe: quem tiver ela pode enviar leituras."
+          : "Não consegui buscar a chave (atualize a API ou entre como administrador). Use a DEVICE_API_KEY do Render no lugar de SUA_DEVICE_API_KEY."}</p>
 
         <div className="modal-actions"><button className="primary-btn" onClick={onClose}>Pronto</button></div>
       </div>

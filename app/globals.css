@@ -358,3 +358,7 @@ button.user-mini:hover{background:#ffffff0d}
 .al-empty{display:grid;justify-items:center;gap:6px;padding:46px 20px;text-align:center;color:#18aa7e}
 .al-empty b{color:var(--text);font-size:14px}.al-empty span{font-size:11px;color:#8795a0}
 @media(max-width:900px){.al-kpis{grid-template-columns:repeat(2,1fr)}.al-item{grid-template-columns:4px minmax(0,1fr);row-gap:8px}.al-values,.al-actions{grid-column:2}.al-values small,.al-values b{text-align:left}.al-search{margin-left:0;max-width:none;flex:1 1 100%}}
+
+.key-row{display:flex;align-items:center;gap:6px;margin-top:4px}
+.key-row b{flex:1;margin:0!important;font-size:12px!important}
+.key-row .ghost-btn{height:28px;font-size:10px;padding:0 9px}

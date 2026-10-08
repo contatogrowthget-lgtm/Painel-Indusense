@@ -85,7 +85,8 @@ export default function AlertWatcher() {
     gravar(SEEN_KEY, vistos.filter((k) => idsAgora.has(k.split(":")[0])));
 
     const pendentes = abertos
-      .filter((a) => !a.lido && !vistos.includes(chave(a)) && !((soneca[a.id] ?? 0) > agora))
+      // aparece para todo alerta aberto que você ainda não confirmou NESTE navegador
+      .filter((a) => !vistos.includes(chave(a)) && !((soneca[a.id] ?? 0) > agora))
       .sort((x, y) => (x.severidade === "critico" ? 0 : 1) - (y.severidade === "critico" ? 0 : 1) || +new Date(y.dataHora) - +new Date(x.dataHora));
 
     setFila(pendentes.length);
