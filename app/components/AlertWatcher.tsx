@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AirVent, AlarmClock, CheckCircle2, ShieldAlert, Thermometer, Waves } from "lucide-react";
-import { anunciarAtivos, call, duracao, fmtNum, tituloAlerta, unidade, type ApiAlerta } from "./alerts-shared";
+import { anunciarAtivos, call, duracao, fmtNum, sensoresOnline, tituloAlerta, unidade, type ApiAlerta } from "./alerts-shared";
 
 /**
  * Fica ligado em todas as telas do painel. A cada 15 s busca os alertas abertos e,
@@ -60,12 +60,19 @@ export default function AlertWatcher() {
   const verificar = useCallback(async () => {
     if (typeof window === "undefined" || !localStorage.getItem("indusense_token")) return;
     let abertos: ApiAlerta[];
+    let online: Set<string>;
     try {
-      abertos = await call<ApiAlerta[]>("/alerts?resolvido=false&limit=100");
+      const [al, sens] = await Promise.all([
+        call<ApiAlerta[]>("/alerts?resolvido=false&limit=100"),
+        call<{ id: string; online?: boolean; status: string; ativo?: boolean }[]>("/sensors"),
+      ]);
+      abertos = al;
+      online = sensoresOnline(sens);
     } catch {
       return; // API acordando ou fora: tenta de novo no próximo ciclo
     }
-    abertos = abertos.filter((a) => a.severidade === "atencao" || a.severidade === "critico");
+    // só avisa de sensores que estão mandando leitura agora (sensor offline não gera aviso)
+    abertos = abertos.filter((a) => (a.severidade === "atencao" || a.severidade === "critico") && online.has(a.sensorId));
     anunciarAtivos(abertos.length);
 
     // alertas que estavam abertos e sumiram = voltaram ao normal

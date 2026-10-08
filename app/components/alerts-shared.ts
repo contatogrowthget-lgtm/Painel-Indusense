@@ -89,3 +89,8 @@ export function anunciarAtivos(n: number) {
     window.dispatchEvent(new CustomEvent("indusense:alerts", { detail: n }));
   } catch { /* ignore */ }
 }
+
+/** Ids dos sensores ativos que estão enviando leitura (não offline). */
+export function sensoresOnline(lista: { id: string; online?: boolean; status: string; ativo?: boolean }[]) {
+  return new Set(lista.filter((s) => s.ativo !== false && s.online !== false && s.status !== "offline").map((s) => s.id));
+}

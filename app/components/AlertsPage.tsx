@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BellOff, CheckCircle2, RefreshCw, Search, Zap } from "lucide-react";
-import { anunciarAtivos, call, duracao, fmtNum, tituloAlerta, unidade, type ApiAlerta } from "./alerts-shared";
+import { anunciarAtivos, call, duracao, fmtNum, sensoresOnline, tituloAlerta, unidade, type ApiAlerta } from "./alerts-shared";
 
 /** Central de alertas ligada à API: ativos / resolvidos, resolver, atualização automática. */
 
@@ -18,6 +18,7 @@ export default function AlertsPage({ onVerSala }: { onVerSala?: (salaCodigo: str
   }, []);
 
   const [lista, setLista] = useState<ApiAlerta[] | null>(null);
+  const [online, setOnline] = useState<Set<string> | null>(null);
   const [erro, setErro] = useState("");
   const [aba, setAba] = useState<Aba>("ativos");
   const [sev, setSev] = useState<"todas" | "critico" | "atencao">("todas");
@@ -27,10 +28,15 @@ export default function AlertsPage({ onVerSala }: { onVerSala?: (salaCodigo: str
 
   const carregar = useCallback(async () => {
     try {
-      const l = await call<ApiAlerta[]>("/alerts?limit=300");
+      const [l, sens] = await Promise.all([
+        call<ApiAlerta[]>("/alerts?limit=300"),
+        call<{ id: string; online?: boolean; status: string; ativo?: boolean }[]>("/sensors").catch(() => null),
+      ]);
+      const on = sens ? sensoresOnline(sens) : null;
       setLista(l);
+      setOnline(on);
       setErro("");
-      anunciarAtivos(l.filter((a) => !a.resolvido && a.severidade !== "offline").length);
+      anunciarAtivos(l.filter((a) => !a.resolvido && a.severidade !== "offline" && (!on || on.has(a.sensorId))).length);
     } catch (e: any) {
       setErro(e.message);
     }
@@ -73,7 +79,8 @@ export default function AlertsPage({ onVerSala }: { onVerSala?: (salaCodigo: str
   }
 
   const todos = lista || [];
-  const ativos = todos.filter((a) => !a.resolvido);
+  const sensorOff = (a: ApiAlerta) => a.severidade === "offline" || (!!online && !online.has(a.sensorId));
+  const ativos = todos.filter((a) => !a.resolvido && !sensorOff(a));
   const resumo = {
     ativos: ativos.length,
     criticos: ativos.filter((a) => a.severidade === "critico").length,
@@ -84,13 +91,13 @@ export default function AlertsPage({ onVerSala }: { onVerSala?: (salaCodigo: str
   const visiveis = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return todos
-      .filter((a) => (aba === "ativos" ? !a.resolvido : aba === "resolvidos" ? a.resolvido : true))
+      .filter((a) => (aba === "ativos" ? !a.resolvido && !sensorOff(a) : aba === "resolvidos" ? a.resolvido : true))
       .filter((a) => sev === "todas" || a.severidade === sev)
       .filter((a) => !q || [a.salaNome, a.salaCodigo, a.sensorNome, a.sensorCodigo, a.tipo].some((v) => (v || "").toLowerCase().includes(q)))
       .sort((x, y) => Number(x.resolvido) - Number(y.resolvido)
         || (x.severidade === "critico" ? 0 : 1) - (y.severidade === "critico" ? 0 : 1)
         || +new Date(y.dataHora) - +new Date(x.dataHora));
-  }, [todos, aba, sev, busca]);
+  }, [todos, aba, sev, busca, online]);
 
   return (
     <div className="page-content">
@@ -161,6 +168,7 @@ export default function AlertsPage({ onVerSala }: { onVerSala?: (salaCodigo: str
                         </span>
                       )}
                       {ativo && !a.lido && <em className="al-new">novo</em>}
+                      {ativo && sensorOff(a) && <span className="status-badge offline"><i /> Sensor offline</span>}
                     </div>
                     <small>
                       {a.salaNome ?? "Sala"}{a.salaCodigo ? ` (${a.salaCodigo})` : ""} · {a.sensorNome} · desde {dataHora(a.dataHora)}
