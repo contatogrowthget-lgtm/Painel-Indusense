@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AirVent, Check, ChevronRight, Copy, Cpu, MoreHorizontal, Nfc, Pencil, Plus, Power, RefreshCw, Search,
+  AirVent, Check, ChevronRight, Copy, Cpu, MoreHorizontal, Pencil, Tag, Plus, Power, RefreshCw, Search,
   ShieldAlert, Thermometer, Trash2, Waves, WifiOff, X,
 } from "lucide-react";
 import { api } from "../../lib/api";
@@ -491,6 +491,13 @@ function ConexaoModal({ sala, sensores, onClose }: { sala: Sala; sensores: Senso
   const url = `${BASE}/readings`;
   const exemplo = sensores[0]?.codigo || `TEMP-${sala.codigo}`;
 
+  const itensLoop: { codigo: string; tipo: string }[] = sensores.length
+    ? sensores.map((s) => ({ codigo: s.codigo || s.id, tipo: String(s.tipo) }))
+    : TIPOS.map((t) => ({ codigo: `${t.prefixo}-${sala.codigo}`, tipo: t.tipo }));
+  const linhasLoop = itensLoop
+    .map((s) => `  enviar("${s.codigo}", lerSensor_${s.tipo}());   // troque pela leitura real`)
+    .join("\n");
+
   const curl = `curl -X POST "${url}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: SUA_DEVICE_API_KEY" \\\n  -d '{"sensorId":"${exemplo}","valor":24.5}'`;
 
   const arduino = `#include <WiFi.h>
@@ -519,8 +526,7 @@ void setup() {
 }
 
 void loop() {
-${(sensores.length ? sensores : TIPOS.map((t) => ({ codigo: `${t.prefixo}-${sala.codigo}`, tipo: t.tipo } as Sensor)))
-  .map((s) => `  enviar("${s.codigo}", lerSensor_${s.tipo}());   // troque pela leitura real`).join("\n")}
+${linhasLoop}
   delay(30000);   // a cada 30 s
 }`;
 
@@ -543,7 +549,7 @@ ${(sensores.length ? sensores : TIPOS.map((t) => ({ codigo: `${t.prefixo}-${sala
 
         <div className="conn-grid">
           <div><small>Código da sala</small><b>{sala.codigo}</b></div>
-          <div><small><Nfc size={11} /> Tag NFC</small><b>{sala.nfcTagId || `NFC-${sala.codigo}`}</b></div>
+          <div><small><Tag size={11} /> Tag NFC</small><b>{sala.nfcTagId || `NFC-${sala.codigo}`}</b></div>
           <div className="full"><small>Endereço para enviar as leituras (POST)</small><b className="mono">{url}</b></div>
         </div>
 
