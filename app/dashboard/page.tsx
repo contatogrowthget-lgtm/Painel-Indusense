@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import UsersPage from "../components/UsersPage";
+import SettingsPage, { Avatar, useSavedUser } from "../components/SettingsPage";
 import { api, type Alert as ApiAlert, type Sala, type Sensor, type User } from "../../lib/api";
 import {
   Activity, AirVent, AlertTriangle, Bell, ChevronDown, CircleHelp, CloudDownload, Database,
@@ -61,6 +62,7 @@ function StatusBadge({status}:{status:string}) {
 }
 
 function Sidebar({page,setPage,collapsed,setCollapsed,onLogout}:{page:string,setPage:(p:string)=>void,collapsed:boolean,setCollapsed:(v:boolean)=>void,onLogout:()=>void}) {
+  const me = useSavedUser();
   const items = [
     ["Dashboard",LayoutDashboard],["Monitoramento",Monitor],["Dispositivos IoT",Wifi],["Sensores",Gauge],
     ["Alertas",Bell],["Histórico",Database],["Relatórios",CloudDownload],["Usuários",Users],["Configurações",Settings]
@@ -73,13 +75,14 @@ function Sidebar({page,setPage,collapsed,setCollapsed,onLogout}:{page:string,set
     <div className="side-label">MENU PRINCIPAL</div>
     <nav>{items.map(([label,Icon])=><button key={label} className={page===label?"active":""} onClick={()=>setPage(label)} title={label}><Icon size={19}/><span>{label}</span>{label==="Alertas"&&<em>3</em>}</button>)}</nav>
     <div className="side-bottom">
-      <div className="user-mini"><div className="avatar">IS</div><div className="user-mini-text"><b>{api.getSavedUser()?.nome || "Usuário"}</b><small>{api.getSavedUser()?.email || ""}</small></div></div>
+      <button className="user-mini" onClick={()=>setPage("Configurações")} title="Meu perfil"><Avatar user={me} size={36} className="avatar"/><div className="user-mini-text"><b>{me?.nome || "Usuário"}</b><small>{me?.email || ""}</small></div></button>
       <button className="logout-btn" onClick={onLogout}><LogOut size={18}/><span>Sair</span></button>
     </div>
   </aside>
 }
 
 function Topbar({page,setPage}:{page:string,setPage:(p:string)=>void}) {
+  const me = useSavedUser();
   return <header className="topbar">
     <button className="mobile-menu" onClick={()=>setPage(page)}><Menu size={21}/></button>
     <div className="crumb"><span>InduSense</span><b>/</b><strong>{page}</strong></div>
@@ -87,7 +90,7 @@ function Topbar({page,setPage}:{page:string,setPage:(p:string)=>void}) {
       <div className="live"><span/> Sistema operacional</div>
       <button className="round-btn" title="Ajuda"><CircleHelp size={19}/></button>
       <button className="round-btn" title="Notificações" onClick={()=>setPage("Alertas")}><Bell size={19}/><i>3</i></button>
-      <div className="top-avatar">{(api.getSavedUser()?.nome || "IS").split(" ").map(x=>x[0]).slice(0,2).join("")}</div>
+      <button className="top-avatar-btn" onClick={()=>setPage("Configurações")} title="Meu perfil"><Avatar user={me} size={36}/></button>
     </div>
   </header>
 }
@@ -210,10 +213,6 @@ function Reports() {
   return <div className="page-content"><div className="page-heading"><div><span className="eyebrow dark">ANÁLISE</span><h1>Relatórios</h1><p>Gere relatórios operacionais e ambientais em PDF.</p></div><button className="primary-btn" onClick={()=>window.print()}><CloudDownload size={17}/> Gerar PDF</button></div><section className="report-preview" id="report"><div className="report-head"><div className="brand-mark"><Activity size={24}/><span>Indu<span>Sense</span></span></div><span>RELATÓRIO • 25 AGO 2026</span></div><h2>Relatório de Monitoramento Industrial</h2><p>Período analisado: 25/08/2026 • Planta principal • Todos os dispositivos</p><div className="report-kpis"><div><small>Temperatura média</small><b>26,7 °C</b></div><div><small>Umidade média</small><b>57,8%</b></div><div><small>Alertas</small><b>3</b></div><div><small>Disponibilidade</small><b>99,2%</b></div></div><h3>Resumo executivo</h3><p>O ambiente encontra-se majoritariamente dentro dos parâmetros de segurança. Foi identificado um ponto de atenção na qualidade do ar e um alerta crítico relacionado ao nível de gases no dispositivo IND-002.</p><div className="report-chart"><ResponsiveContainer width="100%" height={250}><LineChart data={trend}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="time"/><YAxis/><Tooltip/><Line dataKey="temp" name="Temperatura °C" strokeWidth={3}/><Line dataKey="air" name="AQI" strokeWidth={3}/></LineChart></ResponsiveContainer></div></section></div>
 }
 
-function SettingsPage() {
-  return <div className="page-content"><div className="page-heading"><div><span className="eyebrow dark">SISTEMA</span><h1>Configurações</h1><p>Preferências, perfil e segurança do ambiente.</p></div><button className="primary-btn">Salvar alterações</button></div><div className="settings-grid"><section className="panel settings-card"><h3>Perfil</h3><p>Dados da conta administrativa.</p><label>Nome<input defaultValue="Administrador InduSense"/></label><label>E-mail<input defaultValue="admin@indusense.com"/></label><label>Foto<input type="file"/></label></section><section className="panel settings-card"><h3>Sistema</h3><p>Preferências de monitoramento.</p><label>Unidade de temperatura<select defaultValue="Celsius"><option>Celsius (°C)</option><option>Fahrenheit (°F)</option></select></label><label>Intervalo de atualização<select defaultValue="5"><option value="5">5 segundos</option><option value="10">10 segundos</option><option value="30">30 segundos</option></select></label><label className="toggle-row">Notificações <input type="checkbox" defaultChecked/></label></section><section className="panel settings-card"><h3>Segurança</h3><p>Controle de acesso e sessões.</p><button className="ghost-btn full">Alterar senha</button><button className="ghost-btn full">Controle de sessões</button><button className="ghost-btn full">Permissões</button></section></div></div>
-}
-
 export default function DashboardPage() {
   const [page,setPage]=useState("Dashboard");
   const [collapsed,setCollapsed]=useState(false);
@@ -255,7 +254,7 @@ export default function DashboardPage() {
     if(page==="Histórico") return <History/>;
     if(page==="Relatórios") return <Reports/>;
     if(page==="Usuários") return <UsersPage/>;
-    return <SettingsPage/>;
+    return <SettingsPage onGoUsers={()=>setPage("Usuários")}/>;
   },[page,devices]);
 
   return <div className="app-shell"><Sidebar page={page} setPage={setPage} collapsed={collapsed} setCollapsed={setCollapsed} onLogout={logout}/><main className={"main "+(collapsed?"expanded":"")}><Topbar page={page} setPage={setPage}/>{apiLoading && <div className="page-content"><div className="panel" style={{padding:20}}>Carregando dados da API...</div></div>}{apiError && <div className="page-content"><div className="error-box">{apiError}</div></div>}{!apiLoading && content}</main></div>
