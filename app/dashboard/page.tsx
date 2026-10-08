@@ -1,7 +1,8 @@
- "use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import UsersPage from "../components/UsersPage";
 import { api, type Alert as ApiAlert, type Sala, type Sensor, type User } from "../../lib/api";
 import {
   Activity, AirVent, AlertTriangle, Bell, ChevronDown, CircleHelp, CloudDownload, Database,
@@ -26,8 +27,6 @@ type Device = {
 };
 
 const initialDevices: Device[] = [];
-
-const initialUsers: Array<{name:string,email:string,role:string,status:string,last:string}> = [];
 
 const alerts: Array<{type:string,device:string,sensor:string,value:string,expected:string,level:string,status:string,time:string,id?:string}> = [];
 
@@ -209,16 +208,6 @@ function History() {
 
 function Reports() {
   return <div className="page-content"><div className="page-heading"><div><span className="eyebrow dark">ANÁLISE</span><h1>Relatórios</h1><p>Gere relatórios operacionais e ambientais em PDF.</p></div><button className="primary-btn" onClick={()=>window.print()}><CloudDownload size={17}/> Gerar PDF</button></div><section className="report-preview" id="report"><div className="report-head"><div className="brand-mark"><Activity size={24}/><span>Indu<span>Sense</span></span></div><span>RELATÓRIO • 25 AGO 2026</span></div><h2>Relatório de Monitoramento Industrial</h2><p>Período analisado: 25/08/2026 • Planta principal • Todos os dispositivos</p><div className="report-kpis"><div><small>Temperatura média</small><b>26,7 °C</b></div><div><small>Umidade média</small><b>57,8%</b></div><div><small>Alertas</small><b>3</b></div><div><small>Disponibilidade</small><b>99,2%</b></div></div><h3>Resumo executivo</h3><p>O ambiente encontra-se majoritariamente dentro dos parâmetros de segurança. Foi identificado um ponto de atenção na qualidade do ar e um alerta crítico relacionado ao nível de gases no dispositivo IND-002.</p><div className="report-chart"><ResponsiveContainer width="100%" height={250}><LineChart data={trend}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="time"/><YAxis/><Tooltip/><Line dataKey="temp" name="Temperatura °C" strokeWidth={3}/><Line dataKey="air" name="AQI" strokeWidth={3}/></LineChart></ResponsiveContainer></div></section></div>
-}
-
-function UsersPage() {
-  const [users,setUsers]=useState(initialUsers);
-  const [open,setOpen]=useState(false);
-  const [form,setForm]=useState({name:"",email:"",role:"Operador"});
-  function add(e:React.FormEvent){e.preventDefault();if(!form.name||!form.email)return;setUsers(u=>[...u,{...form,status:"Ativo",last:"Nunca"}]);setOpen(false);setForm({name:"",email:"",role:"Operador"})}
-  return <div className="page-content"><div className="page-heading"><div><span className="eyebrow dark">ACESSO</span><h1>Usuários</h1><p>Gerencie os usuários e permissões do sistema.</p></div><button className="primary-btn" onClick={()=>setOpen(true)}><Plus size={17}/> Adicionar usuário</button></div><section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>Usuário</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Último acesso</th><th>Ações</th></tr></thead><tbody>{users.map((u,i)=><tr key={i}><td><div className="person"><span>{u.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</span><b>{u.name}</b></div></td><td>{u.email}</td><td><span className="role-pill">{u.role}</span></td><td><StatusBadge status={u.status}/></td><td>{u.last}</td><td><button className="more-btn"><MoreHorizontal/></button></td></tr>)}</tbody></table></div></section>
-    {open&&<div className="modal-backdrop"><div className="modal"><div className="modal-head"><div><h2>Novo usuário</h2><p>O administrador controla o acesso ao painel.</p></div><button className="more-btn" onClick={()=>setOpen(false)}><X/></button></div><form onSubmit={add}><label>Nome completo<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Nome do usuário"/></label><label>E-mail<input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} type="email" placeholder="usuario@empresa.com"/></label><label>Perfil<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option>Administrador</option><option>Operador</option><option>Visualizador</option></select></label><div className="modal-actions"><button type="button" className="ghost-btn" onClick={()=>setOpen(false)}>Cancelar</button><button className="primary-btn">Criar usuário</button></div></form></div></div>}
-  </div>
 }
 
 function SettingsPage() {
