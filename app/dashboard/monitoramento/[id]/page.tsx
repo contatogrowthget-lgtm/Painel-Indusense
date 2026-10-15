@@ -223,7 +223,7 @@ export default function RoomDetails() {
         <div className="risk-card"><span>Risco operacional</span><b className={riskClass}>{risk}</b><small>Baseado nos sensores e visão computacional</small></div>
       </div>
 
-      <div className="room-alert">
+      <div className={"room-alert"+(risk==="Baixo"&&!abertas.length?" calmo":"")}>
         <AlertTriangle size={18}/>
         <div><b>{mon?.riscoDescricao??(risk==="Alto"?"Atenção operacional necessária":"Ambiente dentro dos parâmetros")}</b>
         <span>{abertas.length
@@ -246,7 +246,7 @@ export default function RoomDetails() {
           <div className="chart-controls">{["6h","24h","7d","30d"].map(x=><button key={x} className={range===x?"active":""} onClick={()=>setRange(x)}>{x}</button>)}</div>
         </div>
         <div className="legend-row"><span><i className="legend-temp"/> Temperatura</span><span><i className="legend-hum"/> Umidade</span><span><i className="legend-air"/> Qualidade do ar</span><span><i className="legend-gas"/> Gases</span></div>
-        <div className="room-chart">{roomHistory.length===0&&<p className="chart-empty">Sem leituras neste período. Ligue o ESP32 da sala e aguarde alguns minutos.</p>}<ResponsiveContainer width="100%" height={330}><LineChart data={roomHistory}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="time"/><YAxis/><Tooltip/><ReferenceLine y={60} strokeDasharray="5 5"/><Line connectNulls type="monotone" dataKey="temp" strokeWidth={3} dot={false} name="Temperatura °C"/><Line connectNulls type="monotone" dataKey="hum" strokeWidth={2} dot={false} name="Umidade %"/><Line connectNulls type="monotone" dataKey="air" strokeWidth={3} dot={false} name="AQI"/><Line connectNulls type="monotone" dataKey="gas" strokeWidth={2} dot={false} name="Gases ppm"/></LineChart></ResponsiveContainer></div>
+        <div className="room-chart">{roomHistory.length===0&&<p className="chart-empty">Sem leituras neste período. Ligue o ESP32 da sala e aguarde alguns minutos.</p>}<ResponsiveContainer width="100%" height={330}><LineChart data={roomHistory}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="time"/><YAxis/><Tooltip/><ReferenceLine y={60} stroke="#fb5a6e" strokeDasharray="5 5"/><Line connectNulls type="monotone" dataKey="temp" stroke="#ff8a4c" strokeWidth={3} dot={false} name="Temperatura °C"/><Line connectNulls type="monotone" dataKey="hum" stroke="#38bdf8" strokeWidth={2} dot={false} name="Umidade %"/><Line connectNulls type="monotone" dataKey="air" stroke="#2dd4bf" strokeWidth={3} dot={false} name="AQI"/><Line connectNulls type="monotone" dataKey="gas" stroke="#fbbf24" strokeWidth={2} dot={false} name="Gases ppm"/></LineChart></ResponsiveContainer></div>
       </section>
 
       <div className="room-lower-grid">
