@@ -234,7 +234,7 @@ export default function DashboardPage() {
   }
 
   const content = useMemo(()=>{
-    if(page==="Dashboard") return <DashboardHomeReal/>;
+    if(page==="Dashboard") return <DashboardHomeReal onNavigate={setPage}/>;
     if(page==="Monitoramento") return <MonitoringPage/>;
     if(page==="Dispositivos IoT") return <Devices devices={devices} setDevices={setDevices}/>;
     if(page==="Sensores") return <Sensors/>;
@@ -245,5 +245,5 @@ export default function DashboardPage() {
     return <SettingsPage onGoUsers={()=>setPage("Usuários")}/>;
   },[page,devices,router]);
 
-  return <div className="app-shell"><Sidebar page={page} setPage={setPage} collapsed={collapsed} setCollapsed={setCollapsed} onLogout={logout}/><main className={"main "+(collapsed?"expanded":"")}><Topbar page={page} setPage={setPage}/>{apiLoading && <div className="page-content"><div className="panel" style={{padding:20}}>Carregando dados da API...</div></div>}{apiError && <div className="page-content"><div className="error-box">{apiError}</div></div>}{!apiLoading && content}</main></div>
+  return <div className="app-shell"><Sidebar page={page} setPage={setPage} collapsed={collapsed} setCollapsed={setCollapsed} onLogout={logout}/><main className={"main "+(collapsed?"expanded":"")+(page==="Dashboard"?" noite":"")}><Topbar page={page} setPage={setPage}/>{apiLoading && <div className="page-content"><div className="panel" style={{padding:20}}>Carregando dados da API...</div></div>}{apiError && <div className="page-content"><div className="error-box">{apiError}</div></div>}{!apiLoading && content}</main></div>
 }
