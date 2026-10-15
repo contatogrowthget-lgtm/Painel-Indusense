@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import UsersPage from "../components/UsersPage";
 import MonitoringPage from "../components/MonitoringPage";
 import AlertsPage from "../components/AlertsPage";
+import DashboardHomeReal from "../components/DashboardHome";
+import ReportsPage from "../components/ReportsPage";
 import SettingsPage, { Avatar, useSavedUser } from "../components/SettingsPage";
 import { api, type Alert as ApiAlert, type Sala, type Sensor, type User } from "../../lib/api";
 import {
@@ -232,13 +234,13 @@ export default function DashboardPage() {
   }
 
   const content = useMemo(()=>{
-    if(page==="Dashboard") return <DashboardHome devices={devices}/>;
+    if(page==="Dashboard") return <DashboardHomeReal/>;
     if(page==="Monitoramento") return <MonitoringPage/>;
     if(page==="Dispositivos IoT") return <Devices devices={devices} setDevices={setDevices}/>;
     if(page==="Sensores") return <Sensors/>;
     if(page==="Alertas") return <AlertsPage onVerSala={(c)=>router.push(`/dashboard/monitoramento/${encodeURIComponent(c)}`)}/>;
     if(page==="Histórico") return <History/>;
-    if(page==="Relatórios") return <Reports/>;
+    if(page==="Relatórios") return <ReportsPage/>;
     if(page==="Usuários") return <UsersPage/>;
     return <SettingsPage onGoUsers={()=>setPage("Usuários")}/>;
   },[page,devices,router]);

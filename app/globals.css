@@ -362,3 +362,19 @@ button.user-mini:hover{background:#ffffff0d}
 .key-row{display:flex;align-items:center;gap:6px;margin-top:4px}
 .key-row b{flex:1;margin:0!important;font-size:12px!important}
 .key-row .ghost-btn{height:28px;font-size:10px;padding:0 9px}
+
+/* ---- Relatórios / gráficos reais ---- */
+.chart-empty{margin:0;padding:38px 12px;text-align:center;color:#7a8ea0;font-size:14px;background:repeating-linear-gradient(45deg,#f6f9fc,#f6f9fc 10px,#f1f5f9 10px,#f1f5f9 20px);border-radius:12px}
+.report-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.report-actions button:disabled{opacity:.55;cursor:not-allowed}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.report-preview .report-kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.report-preview h3{margin-top:26px}
+.report-table{width:100%;border-collapse:collapse;font-size:13px}
+.report-table th{text-align:left;font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#6b7f92;padding:9px 10px;border-bottom:1px solid #e5edf4;white-space:nowrap}
+.report-table td{padding:9px 10px;border-bottom:1px solid #eef3f7;white-space:nowrap}
+.report-table tr:last-child td{border-bottom:0}
+.report-note{font-size:12px;color:#7a8ea0;margin-top:10px}
+.txt-red{color:#dc2626!important}.txt-yellow{color:#d97706!important}.txt-green{color:#059669!important}
+.report-kpis em{font-style:normal;font-size:13px}
+@media print{.report-actions,.error-box{display:none!important}.report-preview .table-scroll{overflow:visible!important}.report-table,.report-table tbody{break-inside:auto!important}.report-table tr{break-inside:avoid}.report-chart{break-inside:avoid}}

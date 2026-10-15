@@ -6,6 +6,8 @@ import { api, type Sensor, type Reading, type Camera as ApiCamera, type Monitora
 import { epiLabel, itemCompliance, vision, visionOrigin, type VisionStatus } from "../../../../lib/vision";
 import LiveStream from "../../../components/LiveStream";
 import CameraFullscreen from "../../../components/CameraFullscreen";
+import { clsStatus, qualidadeAr } from "../../../components/air";
+import { call } from "../../../components/alerts-shared";
 import {
   Activity, AirVent, ArrowLeft, Camera, CheckCircle2, Clock3, Download,
   HardHat, ShieldAlert, Thermometer, Users, Waves, Wifi, WifiOff,
@@ -23,12 +25,6 @@ const rooms: Record<string, any> = {
   "IND-004": {name:"Sala Elétrica", location:"Setor D • Energia", status:"online", temp:27.2, hum:55, air:39, gas:17, people:6, risk:"Baixo"}
 };
 
-const history = [
-  {time:"08:00",temp:24.2,hum:53,air:35,gas:14},{time:"09:00",temp:25.0,hum:55,air:38,gas:18},
-  {time:"10:00",temp:26.4,hum:57,air:43,gas:21},{time:"11:00",temp:27.1,hum:58,air:47,gas:25},
-  {time:"12:00",temp:28.0,hum:61,air:55,gas:31},{time:"13:00",temp:28.7,hum:62,air:61,gas:38},
-  {time:"14:00",temp:29.1,hum:61,air:67,gas:48}
-];
 
 
 function Metric({title,value,unit,icon:Icon,status}:{title:string,value:string,unit:string,icon:any,status:"ok"|"warn"|"critical"}) {
@@ -106,11 +102,14 @@ export default function RoomDetails() {
         setRoomSensors(sensors);
         const get=(tipo:string)=>sensors.find(s=>s.tipo===tipo);
         const t=get("temperatura"), h=get("umidade"), a=get("qualidade_ar"), g=get("gas");
+        const on=(x?:Sensor)=>!!x && x.status!=="offline";
         setRoom({
           name:sala.nome, location:[sala.setor,sala.localizacao].filter(Boolean).join(" • "),
-          status:sala.ativo && !sensors.some(x=>x.status==="offline")?"online":"offline",
+          status:sala.ativo && sensors.some(x=>x.status!=="offline")?"online":"offline",
           temp:t?.valorAtual??0, hum:h?.valorAtual??0, air:a?.valorAtual??0, gas:g?.valorAtual??0,
-          people:0, risk:[a?.status,g?.status].some(x=>x==="critico")?"Alto":"Baixo"
+          // status de cada grandeza vindo da API (respeita os limites cadastrados)
+          st:{temp:on(t)?t!.status:null, hum:on(h)?h!.status:null, air:on(a)?a!.status:null, gas:on(g)?g!.status:null},
+          people:0, risk:[t,h,a,g].some(x=>x?.status==="critico")?"Alto":[t,h,a,g].some(x=>x?.status==="atencao")?"Médio":"Baixo"
         });
         const readings=await Promise.all(sensors.map(x=>api.sensorReadings(x.id).catch(()=>[] as Reading[])));
         const byTime=new Map<string,any>();
@@ -125,11 +124,15 @@ export default function RoomDetails() {
           byTime.set(key,row);
         });
         setRoomHistory(Array.from(byTime.values()).slice(-24));
+        try {
+          const serie=await call<{pontos:any[]}>(`/salas/${encodeURIComponent(sala.id)}/historico?range=${range}`);
+          if(active)setRoomHistory(serie.pontos??[]);
+        } catch { /* fica com as leituras brutas */ }
       } catch(err) { if(active)setError(err instanceof Error?err.message:"Falha ao carregar a área."); }
       finally { if(active)setLoading(false); }
     })();
     return ()=>{active=false};
-  },[params.id,tick]);
+  },[params.id,tick,range]);
 
   // câmeras, EPI e eventos: atualiza a cada 5 s
   useEffect(()=>{
@@ -230,10 +233,10 @@ export default function RoomDetails() {
       </div>
 
       <section className="room-kpis">
-        <Metric title="Temperatura" value={String(room.temp).replace(".",",")} unit="°C" icon={Thermometer} status={room.temp>30?"critical":"ok"}/>
-        <Metric title="Umidade" value={String(room.hum)} unit="%" icon={Waves} status={room.hum>75?"warn":"ok"}/>
-        <Metric title="Qualidade do ar" value={String(room.air)} unit=" AQI" icon={AirVent} status={room.air>60?"critical":room.air>50?"warn":"ok"}/>
-        <Metric title="Gases" value={String(room.gas)} unit=" ppm" icon={ShieldAlert} status={room.gas>40?"critical":room.gas>30?"warn":"ok"}/>
+        <Metric title="Temperatura" value={room.st.temp?String(room.temp).replace(".",","):"—"} unit={room.st.temp?"°C":""} icon={Thermometer} status={clsStatus(room.st.temp)}/>
+        <Metric title="Umidade" value={room.st.hum?String(room.hum).replace(".",","):"—"} unit={room.st.hum?"%":""} icon={Waves} status={clsStatus(room.st.hum)}/>
+        <Metric title="Qualidade do ar" value={qualidadeAr(room.st.air,!!room.st.air).texto} unit={room.st.air?` · ${Math.round(room.air)}`:""} icon={AirVent} status={clsStatus(room.st.air)}/>
+        <Metric title="Gases" value={room.st.gas?String(room.gas).replace(".",","):"—"} unit={room.st.gas?" ppm":""} icon={ShieldAlert} status={clsStatus(room.st.gas)}/>
         <Metric title="Pessoas detectadas" value={String(people)} unit="" icon={Users} status={abertas.length?"warn":"ok"}/>
       </section>
 
@@ -243,7 +246,7 @@ export default function RoomDetails() {
           <div className="chart-controls">{["6h","24h","7d","30d"].map(x=><button key={x} className={range===x?"active":""} onClick={()=>setRange(x)}>{x}</button>)}</div>
         </div>
         <div className="legend-row"><span><i className="legend-temp"/> Temperatura</span><span><i className="legend-hum"/> Umidade</span><span><i className="legend-air"/> Qualidade do ar</span><span><i className="legend-gas"/> Gases</span></div>
-        <div className="room-chart"><ResponsiveContainer width="100%" height={330}><LineChart data={roomHistory.length ? roomHistory : history}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="time"/><YAxis/><Tooltip/><ReferenceLine y={60} strokeDasharray="5 5"/><Line type="monotone" dataKey="temp" strokeWidth={3} dot={false} name="Temperatura °C"/><Line type="monotone" dataKey="hum" strokeWidth={2} dot={false} name="Umidade %"/><Line type="monotone" dataKey="air" strokeWidth={3} dot={false} name="AQI"/><Line type="monotone" dataKey="gas" strokeWidth={2} dot={false} name="Gases ppm"/></LineChart></ResponsiveContainer></div>
+        <div className="room-chart">{roomHistory.length===0&&<p className="chart-empty">Sem leituras neste período. Ligue o ESP32 da sala e aguarde alguns minutos.</p>}<ResponsiveContainer width="100%" height={330}><LineChart data={roomHistory}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="time"/><YAxis/><Tooltip/><ReferenceLine y={60} strokeDasharray="5 5"/><Line connectNulls type="monotone" dataKey="temp" strokeWidth={3} dot={false} name="Temperatura °C"/><Line connectNulls type="monotone" dataKey="hum" strokeWidth={2} dot={false} name="Umidade %"/><Line connectNulls type="monotone" dataKey="air" strokeWidth={3} dot={false} name="AQI"/><Line connectNulls type="monotone" dataKey="gas" strokeWidth={2} dot={false} name="Gases ppm"/></LineChart></ResponsiveContainer></div>
       </section>
 
       <div className="room-lower-grid">
