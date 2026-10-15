@@ -9,7 +9,7 @@ import { anunciarAtivos, call, duracao, fmtNum, sensoresOnline, tituloAlerta, un
  * Fica ligado em todas as telas do painel. A cada 15 s busca os alertas abertos e,
  * quando algum valor sai do limite, mostra um aviso grande na tela:
  *   "OK, estou ciente"   -> marca como lido; só volta se piorar ou se acontecer de novo
- *   "Me lembre em 15 min" -> some agora e reaparece em 15 min se ainda estiver fora
+ *   "Me lembre em 15 min" -> silencia TODOS os avisos por 15 min; depois volta o que continuar fora
  * Quando a leitura volta ao normal, a API resolve o alerta sozinha e o aviso fecha.
  */
 
@@ -17,6 +17,7 @@ const SNOOZE_KEY = "indusense_alert_snooze";
 const SEEN_KEY = "indusense_alert_seen";
 const SONECA_MIN = 15;
 const POLL_MS = 15_000;
+const TODOS = "*"; // soneca geral
 
 function ler<T>(k: string, padrao: T): T {
   try { return JSON.parse(localStorage.getItem(k) || "null") ?? padrao; } catch { return padrao; }
@@ -88,12 +89,13 @@ export default function AlertWatcher() {
     const soneca = ler<Record<string, number>>(SNOOZE_KEY, {});
     const vistos = ler<string[]>(SEEN_KEY, []);
     // limpa registros de alertas que já não existem
-    gravar(SNOOZE_KEY, Object.fromEntries(Object.entries(soneca).filter(([id, ate]) => idsAgora.has(id) && ate > agora)));
+    gravar(SNOOZE_KEY, Object.fromEntries(Object.entries(soneca).filter(([id, ate]) => (id === TODOS || idsAgora.has(id)) && ate > agora)));
+    const silenciado = (soneca[TODOS] ?? 0) > agora;
     gravar(SEEN_KEY, vistos.filter((k) => idsAgora.has(k.split(":")[0])));
 
     const pendentes = abertos
       // aparece para todo alerta aberto que você ainda não confirmou NESTE navegador
-      .filter((a) => !vistos.includes(chave(a)) && !((soneca[a.id] ?? 0) > agora))
+      .filter((a) => !silenciado && !vistos.includes(chave(a)) && !((soneca[a.id] ?? 0) > agora))
       .sort((x, y) => (x.severidade === "critico" ? 0 : 1) - (y.severidade === "critico" ? 0 : 1) || +new Date(y.dataHora) - +new Date(x.dataHora));
 
     setFila(pendentes.length);
@@ -149,11 +151,11 @@ export default function AlertWatcher() {
   function lembrarDepois() {
     if (!atual) return;
     const s = ler<Record<string, number>>(SNOOZE_KEY, {});
-    s[atual.id] = Date.now() + SONECA_MIN * 60_000;
+    s[TODOS] = Date.now() + SONECA_MIN * 60_000; // vale para todos os avisos
     gravar(SNOOZE_KEY, s);
     mostrado.current = null;
     setAtual(null);
-    setAviso(`Certo, eu aviso de novo em ${SONECA_MIN} minutos se continuar fora do limite.`);
+    setAviso(`Certo, todos os avisos ficam em silêncio por ${SONECA_MIN} minutos.`);
     verificar();
   }
 
