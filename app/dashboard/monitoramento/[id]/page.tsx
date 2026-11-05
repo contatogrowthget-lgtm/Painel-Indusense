@@ -54,23 +54,25 @@ function EventIcon({ e }: { e: EventoArea }) {
 
 function CameraFeed({ camera, paused, onExpand }: { camera: ApiCamera; paused: boolean; onExpand: () => void }) {
   const [videoOk, setVideoOk] = useState(true);
-  const live = camera.online && !!camera.streamUrl && videoOk;
+  // Se existe stream, a gente confia no vídeo de verdade (carregou ou não),
+  // não no status "online" da API — que pode estar atrasado.
+  const live = !!camera.streamUrl && videoOk;
   return <div className={"camera-feed" + (camera.streamUrl ? " has-stream" : "")}>
-    {camera.online && camera.streamUrl && !paused && (
+    {camera.streamUrl && !paused && (
       <LiveStream src={camera.streamUrl} alt={`Vídeo ao vivo da ${camera.nome}`} className="camera-stream" onState={setVideoOk}/>
     )}
     {paused && <div className="camera-offline"><Maximize2 size={26}/><b>Aberta em tela cheia</b></div>}
-    {!paused && (!camera.online || (camera.streamUrl && !videoOk)) && (
+    {!paused && camera.streamUrl && !videoOk && (
       <div className="camera-offline"><WifiOff size={28}/><b>Câmera sem sinal</b>
         <span>{camera.ultimoContatoRelativo ? `Última comunicação: ${camera.ultimoContatoRelativo.toLowerCase()}` : camera.issue}</span></div>
     )}
-    {!paused && camera.online && !camera.streamUrl && (
+    {!paused && !camera.streamUrl && (
       <div className="camera-offline"><Camera size={26}/><b>Sem vídeo ao vivo</b><span>Câmera de demonstração, sem sistema de visão ligado.</span></div>
     )}
     {!paused && <>
       <div className="feed-overlay top">{live ? <span><i/> AO VIVO</span> : <span className="muted">SEM VÍDEO</span>}<b>{camera.nome}</b></div>
       <div className="feed-overlay bottom">
-        <span>{camera.online ? `${camera.pessoas} ${camera.pessoas === 1 ? "pessoa detectada" : "pessoas detectadas"}` : "Sem conexão"}</span>
+        <span>{live ? `${camera.pessoas} ${camera.pessoas === 1 ? "pessoa detectada" : "pessoas detectadas"}` : "Sem conexão"}</span>
         {camera.streamUrl && <button onClick={onExpand} title="Abrir em tela cheia" aria-label="Abrir em tela cheia"><Maximize2 size={15}/></button>}
       </div>
     </>}
